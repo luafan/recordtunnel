@@ -1,0 +1,70 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 2 (0x2)
+    Signature Algorithm: sha256WithRSAEncryption
+        Issuer: CN=Cloud App Platform, C=CN
+        Validity
+            Not Before: Feb 15 08:29:53 2017 GMT
+            Not After : Feb 14 08:29:53 2027 GMT
+        Subject: CN=CAPMobile, C=CN
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (2048 bit)
+                Modulus:
+                    00:d8:c4:61:5f:ac:22:1a:76:d6:d7:bc:3d:95:ad:
+                    42:0e:0c:ac:f0:88:83:e2:75:3d:84:4d:7d:d3:53:
+                    fc:57:e3:a7:8b:a8:73:70:f5:7e:40:56:23:61:2b:
+                    ae:59:91:2d:4c:3b:36:3d:df:3f:2f:ef:4c:75:e7:
+                    b0:f1:c6:c8:9f:39:70:9b:54:1a:fa:c6:50:d9:ab:
+                    16:18:7b:86:be:62:0e:cc:e1:d0:ce:95:64:02:98:
+                    16:1b:c0:4a:f1:39:bc:2e:a3:8a:d8:a3:a3:6c:cb:
+                    07:72:20:01:bd:bc:2f:4e:47:d1:63:a9:87:c1:ce:
+                    de:01:24:94:99:e4:61:b3:54:f2:72:e6:20:e7:e2:
+                    0d:4a:a4:80:3c:6c:92:72:b3:3c:76:7e:c0:93:e6:
+                    96:6a:40:a0:9a:89:25:0a:d4:67:2b:f1:65:bc:2a:
+                    77:f2:87:f9:89:bf:51:ba:4a:6f:33:40:8e:81:9d:
+                    6c:ad:27:79:b0:28:52:63:9d:ff:4c:d5:87:a6:29:
+                    ef:21:0a:40:46:1d:02:33:f2:c2:07:b2:02:c6:40:
+                    e5:04:25:38:4b:7a:92:98:ee:5a:fc:5a:1d:90:36:
+                    72:ca:1d:6e:6e:74:9a:86:48:fe:60:3a:52:cb:78:
+                    66:db:7d:af:22:53:7e:20:22:41:e2:ad:7e:52:b2:
+                    19:79
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Basic Constraints: 
+                CA:TRUE
+    Signature Algorithm: sha256WithRSAEncryption
+         70:18:29:22:e3:5e:85:e2:74:3c:26:3e:6f:da:bf:4f:89:a1:
+         05:f1:04:4b:6f:89:3e:66:06:3d:3b:4e:14:52:7c:d6:6f:67:
+         ad:32:ba:cf:e0:34:c1:38:75:f1:fb:d4:a6:67:85:2c:3e:df:
+         79:70:83:e9:d6:b5:33:f8:27:ed:5f:d3:0a:fe:d9:f2:c7:f5:
+         84:9a:fe:51:ab:df:80:61:7c:f8:c5:2e:27:23:ef:6d:04:f0:
+         d5:2b:12:5b:f1:d5:2f:60:10:a5:0b:29:88:8e:a4:c5:fb:4f:
+         09:f8:e9:3f:9a:b2:72:64:82:f1:b7:62:40:f0:91:69:5a:83:
+         8b:b8:73:bc:57:54:d8:d9:32:f9:7b:2e:f7:bb:86:9e:cc:e9:
+         b3:9f:0e:8e:ab:6c:c3:43:f1:4e:c1:52:6a:3e:4f:e2:95:61:
+         4f:89:80:8e:b2:c4:8f:b4:d3:11:5a:9c:1c:29:e5:9e:24:f3:
+         90:e2:f4:12:b2:1e:aa:84:eb:61:0a:75:51:8f:84:0d:d7:15:
+         f9:26:98:1c:65:14:c1:4b:4b:68:9c:8d:24:2c:05:d7:c7:0b:
+         9b:ae:c0:fb:1c:68:51:1f:26:50:a3:57:71:7d:b9:6b:9f:c9:
+         5f:f4:78:6a:d8:49:ef:6c:f2:df:84:06:94:20:a7:f3:df:55:
+         bb:99:a5:41
+-----BEGIN CERTIFICATE-----
+MIIC1jCCAb6gAwIBAgIBAjANBgkqhkiG9w0BAQsFADAqMRswGQYDVQQDDBJDbG91
+ZCBBcHAgUGxhdGZvcm0xCzAJBgNVBAYTAkNOMB4XDTE3MDIxNTA4Mjk1M1oXDTI3
+MDIxNDA4Mjk1M1owITESMBAGA1UEAwwJQ0FQTW9iaWxlMQswCQYDVQQGEwJDTjCC
+ASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBANjEYV+sIhp21te8PZWtQg4M
+rPCIg+J1PYRNfdNT/Ffjp4uoc3D1fkBWI2ErrlmRLUw7Nj3fPy/vTHXnsPHGyJ85
+cJtUGvrGUNmrFhh7hr5iDszh0M6VZAKYFhvASvE5vC6jitijo2zLB3IgAb28L05H
+0WOph8HO3gEklJnkYbNU8nLmIOfiDUqkgDxsknKzPHZ+wJPmlmpAoJqJJQrUZyvx
+Zbwqd/KH+Ym/UbpKbzNAjoGdbK0nebAoUmOd/0zVh6Yp7yEKQEYdAjPywgeyAsZA
+5QQlOEt6kpjuWvxaHZA2csodbm50moZI/mA6Ust4Ztt9ryJTfiAiQeKtflKyGXkC
+AwEAAaMQMA4wDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAcBgpIuNe
+heJ0PCY+b9q/T4mhBfEES2+JPmYGPTtOFFJ81m9nrTK6z+A0wTh18fvUpmeFLD7f
+eXCD6da1M/gn7V/TCv7Z8sf1hJr+UavfgGF8+MUuJyPvbQTw1SsSW/HVL2AQpQsp
+iI6kxftPCfjpP5qycmSC8bdiQPCRaVqDi7hzvFdU2Nky+Xsu97uGnszps58Ojqts
+w0PxTsFSaj5P4pVhT4mAjrLEj7TTEVqcHCnlniTzkOL0ErIeqoTrYQp1UY+EDdcV
++SaYHGUUwUtLaJyNJCwF18cLm67A+xxoUR8mUKNXcX25a5/JX/R4athJ72zy34QG
+lCCn899Vu5mlQQ==
+-----END CERTIFICATE-----
