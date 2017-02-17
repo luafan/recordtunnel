@@ -34,8 +34,8 @@ local function get_hostname_from_clienthello(data)
   local contentType = d:GetU8()
   local major = d:GetU8()
   local minor = d:GetU8()
-  assert(major == 3, "support tls only.")
-  assert(minor == 1, "support tls only.")
+  assert(major == 3, string.format("support tls only, %d.%d", major, minor))
+  assert(minor == 1, string.format("support tls only, %d.%d", major, minor))
 
   local length = string.unpack(">I2", d:GetBytes(2))
 
@@ -491,26 +491,23 @@ local function onaccept(apt)
             if not accepted then
               accepted = true
 
+              self.hostname = self.headers["Host"] or self.headers["host"]
+
               if RECORD then
                 self.record = ctxpool:safe(function(ctx)
                     return ctx.recordproxy("new", {
                         path = self.path,
                         host = self.original_host,
                         port = self.original_port,
-                        hostname = self.headers["Host"] or self.headers["host"],
+                        hostname = self.hostname,
                         created = gettime()
                       })
                   end)
               end
               apt:send("HTTP/1.1 200 Connection Established\r\n\r\n")
             end
-          elseif method == "GET" then
-            local list = {}
-            for k,v in pairs(tunnels) do
-              table.insert(list, v.path)
-            end
-            local body = table.concat(list, "\n")
-            apt:send(string.format("HTTP/1.0 200 OK\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", #(body), body))
+          elseif self.method == "GET" then
+            apt:send("HTTP/1.0 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
           end
         end
       end
@@ -551,4 +548,8 @@ end
 
 function getStatus()
   return string.format("%s", status)
+end
+
+function getTunnels()
+  return tunnels
 end
