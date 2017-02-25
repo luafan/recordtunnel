@@ -34,8 +34,8 @@ local function get_hostname_from_clienthello(data)
   local contentType = d:GetU8()
   local major = d:GetU8()
   local minor = d:GetU8()
-  assert(major == 3, string.format("support tls only, %d.%d", major, minor))
-  assert(minor == 1, string.format("support tls only, %d.%d", major, minor))
+  local var = tonumber(string.format("%d.%d", major, minor))
+  assert(var >= 3.1, string.format("support tls only, %d.%d", major, minor))
 
   local length = string.unpack(">I2", d:GetBytes(2))
 
@@ -447,7 +447,7 @@ function tunnel_mt:lifecycle(buf)
       end,
       ondisconnected = function(msg)
         if config.debug then
-          print(self, path, msg)
+          print(self, self.path, msg)
         end
         self:cleanup()
       end
