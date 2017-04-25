@@ -59,7 +59,12 @@ local function get_hostname_from_clienthello(data)
   while d:available() > 4 do
     local itemType = string.unpack(">I2", d:GetBytes(2))
     local itemLength = string.unpack(">I2", d:GetBytes(2))
-    local itemData = d:GetBytes(itemLength)
+    local itemData
+    if itemLength > 0 then
+      itemData = d:GetBytes(itemLength)
+    else
+      itemData = ""
+    end
     if itemType == 0x0000 then
       local sd = stream.new(itemData)
       local serverNameListLength = string.unpack(">I2", sd:GetBytes(2))
