@@ -1,4 +1,4 @@
-local RECORD = true
+local RECORD = false
 local BLOCK_MODE = false
 
 require "compat53"
@@ -6,11 +6,14 @@ require "compat53"
 status = "n/a"
 
 local fan = require "fan"
+local connector = require "fan.connector"
 local utils = require "fan.utils"
 local tcpd = require "fan.tcpd"
 local mariadb = require "fan.mariadb"
 local stream = require "fan.stream"
 local config = require "config"
+
+local ssl = require "ssl"
 
 local json = require "cjson.safe"
 
@@ -28,58 +31,6 @@ local function gettime()
   return utils.gettime() * 1000
 end
 
-local function get_hostname_from_clienthello(data)
-  local d = stream.new(data)
-
-  local contentType = d:GetU8()
-  local major = d:GetU8()
-  local minor = d:GetU8()
-  local var = tonumber(string.format("%d.%d", major, minor))
-  assert(var >= 3.1, string.format("support tls only, %d.%d", major, minor))
-
-  local length = string.unpack(">I2", d:GetBytes(2))
-
-  local handshakeType = d:GetU8()
-  local length = string.unpack(">I3", d:GetBytes(3))
-  local major = d:GetU8()
-  local minor = d:GetU8()
-
-  d:GetBytes(4 + 28) -- skip random
-  local sessionIdLength = d:GetU8()
-  d:GetBytes(sessionIdLength) -- skip sessionId
-
-  local cipherSuitesLength = string.unpack(">I2", d:GetBytes(2))
-  d:GetBytes(cipherSuitesLength) -- skip cipherSuites
-
-  local compressMethodLength = d:GetU8()
-  d:GetBytes(compressMethodLength) -- skip compressMethod
-
-  local extensionLength = string.unpack(">I2", d:GetBytes(2))
-
-  while d:available() > 4 do
-    local itemType = string.unpack(">I2", d:GetBytes(2))
-    local itemLength = string.unpack(">I2", d:GetBytes(2))
-    local itemData
-    if itemLength > 0 then
-      itemData = d:GetBytes(itemLength)
-    else
-      itemData = ""
-    end
-    if itemType == 0x0000 then
-      local sd = stream.new(itemData)
-      local serverNameListLength = string.unpack(">I2", sd:GetBytes(2))
-      while sd:available() > 0 do
-        local serverNameType = sd:GetU8()
-        local serverNameLength = string.unpack(">I2", sd:GetBytes(2))
-        local servrNameValue = sd:GetBytes(serverNameLength)
-        if serverNameType == 0 then
-          return servrNameValue
-        end
-      end
-    end
-  end
-end
-
 local f = io.open(config.cert_crt, "r")
 local cert_crt = f:read("*all")
 f:close()
@@ -91,9 +42,8 @@ f:close()
 local cakey = assert(openssl.pkey.read(cert_key, true))
 local cacert = assert(openssl.x509.read(cert_crt))
 
-local function build_cert_by_hostname(hostname, certpath)
-  local dn = openssl.x509.name.new({{commonName = hostname}, {C='CN'}})
-  local req = assert(csr.new(dn, cakey))
+local function build_cert_by_subject(subject, certpath)
+  local req = assert(csr.new(subject, cakey))
   local cert = openssl.x509.new(3, req)
   cert:validat(os.time() - 3600 * 24, os.time() + 3600*24*365)
   assert(cert:sign(cakey, cacert, "SHA256"))
@@ -125,6 +75,19 @@ local function split(str, pat)
   return t
 end
 
+if os.getenv("SSL_PORTS") then
+  local list = split(os.getenv("SSL_PORTS"), ",")
+  for i,v in ipairs(list) do
+    config.ssl_ports[v] = true
+  end
+end
+
+if os.getenv("SSL_WHITELIST") then
+  local list = split(os.getenv("SSL_WHITELIST"), ",")
+  for i,v in ipairs(list) do
+    config.ssl_whitelist[v] = true
+  end
+end
 --[[
 http://yourip:8888/ get the list of tunnels
 
@@ -138,7 +101,7 @@ local tunnel_mt = {}
 tunnel_mt.__index = tunnel_mt
 
 function tunnel_mt:__tostring()
-  return string.format("[T%03d]", self.index)
+  return string.format("[T%03d][%s]", self.index, self.original_host)
 end
 
 function tunnel_mt:append(buf)
@@ -280,10 +243,39 @@ function tunnel_mt:cleanup()
   end
 end
 
-function tunnel_mt:ssl_proxy(buf)
+local ip_hostname_cache = {}
+
+function tunnel_mt:ssl_proxy(buf, host, port)
   if not self.sslport then
-    local hostname = get_hostname_from_clienthello(buf)
-    assert(hostname, "host name not found!")
+    local hostname, contentType, var = ssl.get_hostname_from_clienthello(buf)
+
+    if not hostname then
+      hostname = ip_hostname_cache[self.original_host]
+    end
+
+    if not hostname then
+      if contentType ~= 22 or (var and var ~= 3.0 and var ~= 2.0) then
+        -- print("unknown ssl protocol! ignore ssl_proxy.")
+        return host, port
+      end
+      -- print("connecting", self.original_host, self.original_port)
+      local cli = connector.connect(string.format("tcp://%s:%s", self.original_host, self.original_port))
+      cli:send(buf)
+      local input = cli:receive()
+      local body = input:GetBytes()
+      cli:close()
+      local subject,expect = ssl.get_subject_from_server_hello(body)
+      if subject then
+        hostname = subject:get_text("CN")
+        ip_hostname_cache[self.original_host] = hostname
+        print(self.original_host, "get_hostname", hostname)
+      end
+    end
+    if not hostname or config.ssl_whitelist[hostname] then
+      -- print("hostname not found! ignore ssl_proxy.")
+      return host, port
+    end
+
     self.original_host = hostname
     if RECORD then
       ctxpool:safe(function(ctx)
@@ -301,13 +293,13 @@ function tunnel_mt:ssl_proxy(buf)
     else
       cert_path = string.format("certs/%s.pem", hostname)
     end
-    if hostname then
-      if not lfs.attributes(cert_path) then
-        build_cert_by_hostname(hostname, cert_path)
-      else
-        if config.debug then
-          print("using certs cache", cert_path)
-        end
+
+    if not lfs.attributes(cert_path) then
+      local subject = openssl.x509.name.new({{commonName = hostname}, {C='CN'}})
+      build_cert_by_subject(subject, cert_path)
+    else
+      if config.debug then
+        print("using certs cache", cert_path)
       end
     end
 
@@ -346,6 +338,11 @@ function tunnel_mt:ssl_proxy(buf)
             end
 
             cache = cache and (cache .. buf) or buf
+
+            local a,b = string.find(cache:lower(), "host: ([^\r\n:]*)")
+            if a and b then
+              self.original_host = string.sub(cache, a + 6, b)
+            end
 
             if config.debug then
               print(self, "[sslapt] connecting", self.original_host, self.original_port)
@@ -419,8 +416,15 @@ function tunnel_mt:lifecycle(buf)
     local host = self.original_host
     local port = self.original_port
 
-    if port == "443" then
-      host,port = self:ssl_proxy(buf)
+    self.ssl_verified = ssl.verify_clienthello(buf)
+
+    if self.ssl_verified or config.ssl_ports[port] then
+      host,port = self:ssl_proxy(buf, host, port)
+    else
+      local a,b = string.find(buf:lower(), "host: ([^\r\n:]*)")
+      if a and b then
+        self.original_host = string.sub(buf, a + 6, b)
+      end
     end
 
     self.conn = tcpd.connect{
@@ -475,8 +479,6 @@ end
 local function onaccept(apt)
   local accepted = false
 
-  local info = apt:remoteinfo()
-
   local tunnel = tunnel_mt.new(apt)
   local self = tunnel
 
@@ -497,6 +499,7 @@ local function onaccept(apt)
               accepted = true
 
               self.hostname = self.headers["Host"] or self.headers["host"]
+              -- print("link", self.original_host, self.original_port)
 
               if RECORD then
                 self.record = ctxpool:safe(function(ctx)
@@ -518,6 +521,7 @@ local function onaccept(apt)
       end
     end,
     ondisconnected = function(msg)
+      -- print("client disconnected", msg)
       tunnel:cleanup()
     end
   }
