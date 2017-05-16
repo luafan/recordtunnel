@@ -1,5 +1,5 @@
 local RECORD = false
-local BLOCK_MODE = false
+local BLOCK_MODE = true
 
 require "compat53"
 
@@ -12,6 +12,8 @@ local tcpd = require "fan.tcpd"
 local mariadb = require "fan.mariadb"
 local stream = require "fan.stream"
 local config = require "config"
+
+local tunnelhook = require "tunnelhook"
 
 local ssl = require "ssl"
 
@@ -202,6 +204,12 @@ function tunnel_mt:remote_send(buf)
     return
   end
 
+  if not self.sslport then
+    if tunnelhook.dosend then
+      buf = tunnelhook.dosend(self, buf)
+    end
+  end
+
   self.conn:send(buf)
   if BLOCK_MODE then
     self.apt:pause_read()
@@ -316,6 +324,10 @@ function tunnel_mt:ssl_proxy(buf, host, port)
         local cache = nil
 
         local ssl_remote_send = function(buf)
+          if tunnelhook.dosend then
+            buf = tunnelhook.dosend(self, buf)
+          end
+
           self.sslconn:send(buf)
           if BLOCK_MODE then
             sslapt:pause_read()
@@ -376,6 +388,9 @@ function tunnel_mt:ssl_proxy(buf, host, port)
               onread = function(buf)
                 if config.debug then
                   print(self, "[sslapt] remote receive/forward", #(buf), buf)
+                end
+                if tunnelhook.doreceive then
+                  buf = tunnelhook.doreceive(self, buf)
                 end
                 sslapt:send(buf)
                 self:record_receive(buf)
@@ -449,6 +464,13 @@ function tunnel_mt:lifecycle(buf)
         if config.debug then
           print(self, "remote receive/feedbackclient", #(buf), self.sslport and "<ssldata>" or buf)
         end
+
+        if not self.sslport then
+          if tunnelhook.doreceive then
+            buf = tunnelhook.doreceive(self, buf)
+          end
+        end
+        
         self.apt:send(buf)
         if not self.sslport then
           self:record_receive(buf)
