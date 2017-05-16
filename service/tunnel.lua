@@ -1,6 +1,3 @@
-local RECORD = false
-local BLOCK_MODE = true
-
 require "compat53"
 
 status = "n/a"
@@ -12,6 +9,9 @@ local tcpd = require "fan.tcpd"
 local mariadb = require "fan.mariadb"
 local stream = require "fan.stream"
 local config = require "config"
+
+local RECORD = config.record or true
+local BLOCK_MODE = config.block_mode or true
 
 local tunnelhook = require "tunnelhook"
 
