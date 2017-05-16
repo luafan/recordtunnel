@@ -1,3 +1,5 @@
+local config = require "config"
+
 local function dosend(tunnel, buf)
     if config.debug then
         print(tunnel, tunnel.original_port, buf)
