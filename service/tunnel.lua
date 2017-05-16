@@ -10,8 +10,8 @@ local mariadb = require "fan.mariadb"
 local stream = require "fan.stream"
 local config = require "config"
 
-local RECORD = config.record or true
-local BLOCK_MODE = config.block_mode or true
+local RECORD = config.record
+local BLOCK_MODE = config.block_mode
 
 local tunnelhook = require "tunnelhook"
 
@@ -44,10 +44,16 @@ f:close()
 local cakey = assert(openssl.pkey.read(cert_key, true))
 local cacert = assert(openssl.x509.read(cert_crt))
 
-local function build_cert_by_subject(subject, certpath)
+local function build_cert_by_subject(hostname, subject, certpath)
     local req = assert(csr.new(subject, cakey))
     local cert = openssl.x509.new(3, req)
     cert:validat(os.time() - 3600 * 24, os.time() + 3600 * 24 * 365)
+    cert:extensions{
+    openssl.x509.extension.new_extension{
+        object='subjectAltName',
+        value='DNS:' .. hostname
+    }
+    }
     assert(cert:sign(cakey, cacert, "SHA256"))
     
     local f = io.open(certpath, "w")
@@ -303,7 +309,7 @@ function tunnel_mt:ssl_proxy(buf, host, port)
         
         if not lfs.attributes(cert_path) then
             local subject = openssl.x509.name.new({{commonName = hostname}, {C = 'CN'}})
-            build_cert_by_subject(subject, cert_path)
+            build_cert_by_subject(hostname, subject, cert_path)
         else
             if config.debug then
                 print("using certs cache", cert_path)

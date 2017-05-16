@@ -7,3 +7,6 @@ ssl_ports = {
 }
 
 ssl_whitelist = {}
+
+record = os.getenv("RECORD") and os.getenv("RECORD") == "true"
+block_mode = os.getenv("BLOCK_MODE") and os.getenv("BLOCK_MODE") == "true"
