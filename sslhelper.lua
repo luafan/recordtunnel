@@ -1,4 +1,6 @@
 local stream = require "fan.stream"
+local openssl = require 'openssl'
+local crl, csr, x509 = openssl.x509.crl, openssl.x509.req, openssl.x509
 
 local minium_client_hello_size = 1 + 2 + 2 + 1 + 3 + 2
 

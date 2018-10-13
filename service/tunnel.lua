@@ -15,7 +15,7 @@ local BLOCK_MODE = config.block_mode
 
 local tunnelhook = require "tunnelhook"
 
-local ssl = require "ssl"
+local ssl = require "sslhelper"
 
 local json = require "cjson.safe"
 
