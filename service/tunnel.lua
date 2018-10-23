@@ -146,25 +146,27 @@ function tunnel_mt:readheader()
             break
         else
             if #(line) == 0 then
+                for k,v in pairs(self.origin_headers) do
+                    self.headers[k:lower()] = v
+                end
                 self.header_complete = true
             else
                 if self.first_line then
                     local k, v = string.match(line, "([^:]+):[ ]*(.*)")
-                    k = string.lower(k)
-                    local old = self.headers[k]
+                    local old = self.origin_headers[k]
                     if old then
                         if type(old) == "table" then
                             table.insert(old, v)
                         else
-                            self.headers[k] = {old, v}
+                            self.origin_headers[k] = {old, v}
                         end
                     else
-                        self.headers[k] = v
+                        self.origin_headers[k] = v
                     end
                 else
                     self.method, self.path, self.version = string.match(line, "([A-Z]+) ([^ ]+) HTTP/([0-9.]+)")
                     self.original_host, self.original_port = string.match(self.path, "([^:]+):(%d+)")
-                    
+
                     self.first_line = true
                 end
             end
@@ -458,7 +460,7 @@ function tunnel_mt:lifecycle(buf)
                 end
             end, ondisconnected = function(msg)
                 if config.debug then
-                    print(self, self.path, msg)
+                    print(self, "ondisconnected", self.original_host, self.original_port, msg)
                 end
                 self:cleanup()
             end}
@@ -466,8 +468,8 @@ function tunnel_mt:lifecycle(buf)
 end
 
 function tunnel_mt.new(apt, path)
-    local tunnel = {apt = apt, index = tunnel_index, headers = {}}
-    
+    local tunnel = {apt = apt, index = tunnel_index, headers = {}, origin_headers = {}}
+
     setmetatable(tunnel, tunnel_mt)
     
     tunnel_index = tunnel_index + 1
@@ -498,8 +500,8 @@ local function onaccept(apt)
                     if self.method == "CONNECT" and not self.conn then
                         if not accepted then
                             accepted = true
-                            
-                            self.hostname = self.headers["Host"] or self.headers["host"]
+
+                            self.hostname = self.headers["host"]
                             -- print("link", self.original_host, self.original_port)
                             
                             if RECORD then
@@ -511,8 +513,32 @@ local function onaccept(apt)
                             end
                             apt:send("HTTP/1.1 200 Connection Established\r\n\r\n")
                         end
-                    elseif self.method == "GET" then
-                        apt:send("HTTP/1.0 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
+                    elseif self.method == "GET" or self.method == "POST" then
+                        local list = {}
+                        local scheme, server, path = string.match(self.path, "([^:]+)://([^/]+)(/.*)")
+                        if scheme and server and path then
+                            if string.find(server, ":") then
+                                self.original_host, self.original_port = string.match(server, "([^:]+):([^:]+)")
+                            else
+                                self.original_host = server
+                                self.original_port = 80
+                            end
+                            self.path = path
+
+                            table.insert(list, string.format("%s %s HTTP/%s", self.method, path, self.version))
+                            table.insert(list, string.format("Host: %s", server))
+                            for k,v in pairs(self.origin_headers) do
+                                if k:lower() ~= "proxy-connection" and k:lower() ~= "host" then
+                                    table.insert(list, string.format("%s: %s", k, v))
+                                end
+                            end
+                            table.insert(list, "\r\n")
+                            print(table.concat(list, "\r\n"))
+                            accepted = true
+                            self:lifecycle(table.concat(list, "\r\n"))
+                        else
+                            apt:send("HTTP/1.0 200 OK\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
+                        end
                     end
                 end
             end
